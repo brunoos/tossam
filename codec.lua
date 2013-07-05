@@ -65,24 +65,24 @@ s      <- (%s / %nl)*
 S      <- (%s / %nl)+
 ]==]
 
-local types = {
-   nx_int8_t     = { fmt = ">i1", size = 1},
-   nx_int16_t    = { fmt = ">i2", size = 2},
-   nx_int32_t    = { fmt = ">i4", size = 4},
-   nx_int64_t    = { fmt = ">i8", size = 8},
-   nx_uint8_t    = { fmt = ">I1", size = 1},
-   nx_uint16_t   = { fmt = ">I2", size = 2},
-   nx_uint32_t   = { fmt = ">I4", size = 4},
-   nx_uint64_t   = { fmt = ">I8", size = 8},
-   nxle_int8_t   = { fmt = "<i1", size = 1},
-   nxle_int16_t  = { fmt = "<i2", size = 2},
-   nxle_int32_t  = { fmt = "<i4", size = 4},
-   nxle_int64_t  = { fmt = "<i8", size = 8},
-   nxle_uint8_t  = { fmt = "<I1", size = 1},
-   nxle_uint16_t = { fmt = "<I2", size = 2},
-   nxle_uint32_t = { fmt = "<I4", size = 4},
-   nxle_uint64_t = { fmt = "<I8", size = 8},
-   nx_float      = { fmt =   "f", size = 4},
+local format = {
+   nx_int8_t     = ">i1",
+   nx_int16_t    = ">i2",
+   nx_int32_t    = ">i4",
+   nx_int64_t    = ">i8",
+   nx_uint8_t    = ">I1",
+   nx_uint16_t   = ">I2",
+   nx_uint32_t   = ">I4",
+   nx_uint64_t   = ">I8",
+   nxle_int8_t   = "<i1",
+   nxle_int16_t  = "<i2",
+   nxle_int32_t  = "<i4",
+   nxle_int64_t  = "<i8",
+   nxle_uint8_t  = "<I1",
+   nxle_uint16_t = "<I2",
+   nxle_uint32_t = "<I4",
+   nxle_uint64_t = "<I8",
+   nx_float      =   "f",
 }
 
 --------------------------------------------------------------------------------
@@ -124,12 +124,12 @@ function decode(def, data, pos)
   local payload = {}
   for k, field in ipairs(def.block) do
      if field.kind == "SCALAR" then
-        value, pos = struct.unpack(types[field.type].fmt, data, pos)
+        value, pos = struct.unpack(format[field.type], data, pos)
         payload[field.name] = value
      elseif field.size.kind == "NUM" then
         local tb = {
           struct.unpack(
-            string.rep(types[field.type].fmt, field.size.value),
+            string.rep(format[field.type], field.size.value),
             data,
             pos)
         }
@@ -140,7 +140,7 @@ function decode(def, data, pos)
      then
         local tb = {
           struct.unpack(
-            string.rep(types[field.type].fmt, payload[field.size.var]),
+            string.rep(format[field.type], payload[field.size.var]),
             data,
             pos)
         }
@@ -161,19 +161,19 @@ function encode(def, payload)
         type(payload[field.name]) == "number"
      then
         data[#data+1] = struct.pack(
-           types[field.type].fmt, 
+           format[field.type],
            payload[field.name])
      elseif field.size.kind == "NUM" and 
             type(payload[field.name]) == "table" 
      then
         for i = 1, field.size.value do
           data[#data+1] = struct.pack(
-             types[field.type].fmt,
+             format[field.type],
              payload[field.name][i])
         end
         -- Padding with zero
         for i = 1, (field.size.value - #payload[field.name]) do
-          data[#data+1] = struct.pack(types[field.type].fmt, 0)
+          data[#data+1] = struct.pack(format[field.type], 0)
         end
      elseif type(payload[field.size.var]) == "number" and 
             payload[field.size.var] > 0               and
@@ -181,12 +181,12 @@ function encode(def, payload)
      then
         for i = 1, payload[field.size.var] do
           data[#data+1] = struct.pack(
-             types[field.type].fmt,
+             format[field.type],
              payload[field.name][i])
         end
         -- Padding with zero
         for i = 1, (payload[field.size.var] - #payload[field.name]) do
-          data[#data+1] = struct.pack(types[field.type].fmt, 0)
+          data[#data+1] = struct.pack(format[field.type], 0)
         end
      else
         return nil
