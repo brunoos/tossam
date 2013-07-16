@@ -6,6 +6,8 @@ local table  = require("table")
 
 local type         = type
 local print        = print
+local pairs        = pairs
+local ipairs       = ipairs
 local setmetatable = setmetatable
 
 module("tossam")
@@ -21,28 +23,55 @@ nx_struct header[0] {
 };
 ]]
 
-local defheader = codec.parser(strheader)
+local defheader = (codec.parser(strheader))[1]
 
 local function register(srl, str)
-   local def, err = codec.parser(str)
+   local defs, err = codec.parser(str)
    if err then return false, err end
-   if srl.db[def.type] then
-      return false, "AM type already registered"
+   local tmp = {}
+   for i, def in ipairs(defs) do
+     if srl.defs[def.id] or tmp[def.id] then
+        return false, "AM type already defined: " .. def.name
+     else
+        tmp[def.id] = true
+     end
    end
-   srl.db[def.id]   = def
-   srl.db[def.name] = def
+   for i, def in ipairs(defs) do
+     srl.defs[def.id]   = def
+     srl.defs[def.name] = def
+   end
    return true
 end
 
+local function registered(srl)
+  local defs = {}
+  for k, v in pairs(srl.defs) do
+    if type(k) == "string" then
+      defs[k] = v.id
+    end
+  end
+  return defs
+end
+
+local function unregister(srl, id)
+  local def = srl.defs[id]
+  if def then
+    srl.defs[def.id]   = nil
+    srl.defs[def.name] = nil
+    return true
+  end
+  return false
+end
+
 local function close(srl)
-   return serial.close(srl.fd)
+   return serial.close(srl.port)
 end
 
 local function receive(srl)
-   local pck = serial.read(srl.fd)
+   local pck = serial.recv(srl.port)
    if not pck then return nil end
    local head = codec.decode(defheader, pck, 1)
-   local def = srl.db[head.type]
+   local def = srl.defs[head.type]
    if not def then
       return nil, "Unknown AM type"
    end
@@ -58,7 +87,7 @@ local function send(srl, payload, def)
    if (type(def) ~= "number" and type(def) ~= "string") then
       return false, "Invalid parameters"
    end
-   def = srl.db[def]
+   def = srl.defs[def]
    if not def then
       return false, "Unknown AM type"
    end
@@ -72,36 +101,25 @@ local function send(srl, payload, def)
       type = def.id,
    }
    head = codec.encode(defheader, head)
-   if serial.write(srl.fd, head..payload) then
+   if serial.send(srl.port, head..payload) then
       return true
    end
    return false, "Could not send the message"
 end
 
-local function getfd(srl)
-   return serial.getfd(srl.fd)
-end
-
 local meta = { }
 meta.__index = {
-  close    = close,
-  getfd    = getfd,
-  send     = send,
-  receive  = receive,
-  register = register,
+  close      = close,
+  send       = send,
+  receive    = receive,
+  register   = register,
+  registered = registered,
+  unregister = unregister,
 }
 
-function connect(dev, baud, nonblocking)
-  local fd, err
-  nonblocking = (nonblocking and true) or false
-  if type(baud) == "string" then
-    baud, err = serial.baud(baud)
-    if not baud then
-      return nil, err
-    end
-  end
-  fd, err = serial.open(dev, baud, nonblocking)
+function connect(dev, baud)
+  local port, err = serial.open(dev, baud)
   if err then return nil, err end
-  local srl = { fd = fd, db = {} }
+  local srl = { port = port, defs = {} }
   return setmetatable(srl, meta)
 end
