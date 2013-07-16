@@ -13,6 +13,8 @@ local tonumber = tonumber
 module("tossam.codec")
 
 local grammar = [==[
+structs <- s {| struct+ (!. / error) |}
+error <- {| {:pos: {} :} {:kind: . -> 'ERROR':} |}
 struct <- {| s
              "nx_struct" S
              {:name: name :} s
@@ -110,11 +112,17 @@ local function check(def)
 end
 
 function parser(str)
-  local def = re.match(str, grammar)
-  if not def or not check(def) then
-    return nil, "Invalid struct"
+  local defs = re.match(str, grammar)
+  local err = defs[#defs]
+  if err.kind == "ERROR" then
+    return nil, "Parser error at " .. tostring(err.pos)
   end
-  return def
+  for i, def in ipairs(defs) do
+    if not def or not check(def) then
+      return nil, "Parser error"
+    end
+  end
+  return defs
 end
 
 --------------------------------------------------------------------------------
