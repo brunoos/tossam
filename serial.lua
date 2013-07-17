@@ -36,7 +36,7 @@ local timeout = 100
 local MTU     = 255
 
 local mote2baud = {
-  eyesIFX    = rs232.RS232_BAUD_57600,
+  eyesifx    = rs232.RS232_BAUD_57600,
   intelmote2 = rs232.RS232_BAUD_115200,
   iris       = rs232.RS232_BAUD_57600,
   mica       = rs232.RS232_BAUD_19200,
