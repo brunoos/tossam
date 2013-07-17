@@ -1,3 +1,8 @@
+--
+-- TOSSAM
+-- author: Bruno Silvestre
+-- e-mail: brunoos@inf.ufg.br
+-- 
 local re     = require("re")
 local struct = require("struct")
 

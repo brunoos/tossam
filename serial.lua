@@ -1,3 +1,8 @@
+--
+-- TOSSAM
+-- author: Bruno Silvestre
+-- e-mail: brunoos@inf.ufg.br
+--
 local bit   = require("bit")
 local rs232 = require("luars232")
 
