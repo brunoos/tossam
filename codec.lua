@@ -13,6 +13,7 @@ local print    = print
 local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
+local tostring = tostring
 local tonumber = tonumber
 
 module("tossam.codec")
@@ -29,7 +30,7 @@ struct <- {| s
          |}
 block  <- {|
             "{" s
-            (vector / scalar)+
+            (scalar / array)+
             "}" s
           |}
 scalar <- {|
@@ -38,15 +39,15 @@ scalar <- {|
              {:name: name :} s
              ";" s
            |}
-vector <- {|
-             {:kind: "" -> "VECTOR" :}
+array <- {|
+             {:kind: "" -> "ARRAY" :}
              {:type: type :} s
              {:name: name :} s
-             "[" s
-             {:size: (numSize / varSize) :} s
-             "]" s
+             {:levels: levels :}
              ";" s
            |}
+levels <- {| level+ |}
+level  <- "[" s num s "]" s
 type   <- {
             "nx_int8_t"     / "nx_int16_t"    /
             "nx_int32_t"    / "nx_int64_t"    /
@@ -58,14 +59,6 @@ type   <- {
             "nxle_uint32_t" / "nxle_uint64_t" /
             "nx_float"
           }
-varSize  <- {|
-              {:kind: "" -> "VAR" :}
-              {:var: name :}
-            |}
-numSize  <- {|
-              {:kind: "" -> "NUM" :}
-              {:value: num :}
-            |}
 name   <- { ([a-zA-Z] / "_") ([a-zA-Z0-9] / "_")* }
 num    <- { [0-9]+ }
 s      <- (%s / %nl)*
@@ -101,14 +94,9 @@ local function check(def)
     if def.vars[var.name] then
       return false
     end
-    if var.kind == "VECTOR" then
-      if var.size.kind == "NUM" then
-        var.size.value = tonumber(var.size.value)
-      elseif (not def.vars[var.size.var]) or
-             (def.vars[var.size.var].type == "nx_float")
-      then
-        -- Variable must be already declared
-        return false
+    if var.kind == "ARRAY" then
+      for i, j in ipairs(var.levels) do
+        var.levels[i] = tonumber(j)
       end
     end
     def.vars[var.name] = var
@@ -131,6 +119,33 @@ function parser(str)
 end
 
 --------------------------------------------------------------------------------
+local function arraydec(levels, level, fmt, data, pos)
+  local tb
+  local size = levels[level]
+  if #levels == level then
+    tb = { struct.unpack(string.rep(fmt, size), data, pos) }
+    pos = table.remove(tb, #tb)
+  else
+    tb = {}
+    for i = 1, size do
+      tb[i], pos = arraydec(levels, level+1, fmt, data, pos)
+    end
+  end
+  return tb, pos
+end
+
+local function arrayenc(levels, level, fmt, value, data)
+  local size = levels[level]
+  if #levels == level then
+    for i = 1, size do
+      data[#data+1] = struct.pack(fmt, value[i])
+    end
+  else
+    for i = 1, size do
+      arrayenc(levels, level+1, fmt, value[i], data)
+    end
+  end
+end
 
 function decode(def, data, pos)
   local fmt, value
@@ -138,30 +153,12 @@ function decode(def, data, pos)
   for k, field in ipairs(def.block) do
      if field.kind == "SCALAR" then
         value, pos = struct.unpack(format[field.type], data, pos)
-        payload[field.name] = value
-     elseif field.size.kind == "NUM" then
-        local tb = {
-          struct.unpack(
-            string.rep(format[field.type], field.size.value),
-            data,
-            pos)
-        }
-        pos = table.remove(tb, #tb)
-        payload[field.name] = tb
-     elseif type(payload[field.size.var]) == "number" and 
-            payload[field.size.var] > 0 
-     then
-        local tb = {
-          struct.unpack(
-            string.rep(format[field.type], payload[field.size.var]),
-            data,
-            pos)
-        }
-        pos = table.remove(tb, #tb)
-        payload[field.name] = tb
+     elseif field.kind == "ARRAY" then
+        value, pos = arraydec(field.levels, 1, format[field.type], data, pos)
      else
         return nil
      end
+     payload[field.name] = value
   end
   return payload
 end
@@ -170,37 +167,11 @@ function encode(def, payload)
   local fmt, value
   local data = {}
   for k, field in ipairs(def.block) do
-     if field.kind == "SCALAR" and 
-        type(payload[field.name]) == "number"
-     then
-        data[#data+1] = struct.pack(
-           format[field.type],
-           payload[field.name])
-     elseif field.size.kind == "NUM" and 
-            type(payload[field.name]) == "table" 
-     then
-        for i = 1, field.size.value do
-          data[#data+1] = struct.pack(
-             format[field.type],
-             payload[field.name][i])
-        end
-        -- Padding with zero
-        for i = 1, (field.size.value - #payload[field.name]) do
-          data[#data+1] = struct.pack(format[field.type], 0)
-        end
-     elseif type(payload[field.size.var]) == "number" and 
-            payload[field.size.var] > 0               and
-            type(payload[field.name]) == "table"
-     then
-        for i = 1, payload[field.size.var] do
-          data[#data+1] = struct.pack(
-             format[field.type],
-             payload[field.name][i])
-        end
-        -- Padding with zero
-        for i = 1, (payload[field.size.var] - #payload[field.name]) do
-          data[#data+1] = struct.pack(format[field.type], 0)
-        end
+     local value = payload[field.name]
+     if field.kind == "SCALAR" and type(value) == "number" then
+        data[#data+1] = struct.pack(format[field.type], value)
+     elseif field.kind == "ARRAY" and type(value) == "table" then
+        arrayenc(field.levels, 1, format[field.type], value, data)
      else
         return nil
      end
