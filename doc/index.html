@@ -25,7 +25,8 @@
 <a name="TOSSAM">
 <h3></a>TOSSAM - TinyOS Serial AM for Lua</h3>
 
-<p>TOSSAM is a library to send and receive TinyOS's ActiveMessage, using the serial port. For example:</p>
+<p>TOSSAM is a library to send and receive TinyOS's ActiveMessage, using the serial port.</p>
+
 <pre>
 local tossam = require("tossam") 
 
@@ -33,23 +34,34 @@ local micaz = tossam.connect("/dev/ttyUSB1", "micaz")
 
 micaz:register [[ 
   nx_struct msg_serial [50] { 
-    nx_uint8_t  sum; 
     nx_uint8_t  count; 
-    nx_uint16_t vet[3]; 
+    nx_uint16_t vet[3];
+    nx_int8_t   mat[2][3];
   }; 
 ]]
 
-for i = 1, 3 do 
-  local msg, err = micaz:receive() 
-  print(msg.sum) 
-  print(msg.count) 
-  for k, v in ipairs(msg.vet) do
-    print(k, v)
-  end 
-  print("---") 
-  msg = { sum = 0, count = i, vet = {10,5,10} }
-  micaz:send(msg, 50)
+local msg, err = micaz:receive() 
+
+print(msg.count) 
+for k, v in ipairs(msg.vet) do
+  print(k, v)
 end
+for i = 1, 2 do
+  for j = 1, 3 do
+    print(msg.mat[i][j])
+  end
+end
+
+msg = {
+  count = 87,
+  vet = {3, 5, 15},
+  mat = {
+    { 10,  20,  30},
+    {-10, -20, -30},
+  }
+}
+
+micaz:send(msg, 50)
 
 micaz:close() 
 </pre>
@@ -59,7 +71,8 @@ micaz:close()
 <a name="Install"></a>
 <h4>Install</h4>
 
-<p>Download: <a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-201307181351.tar.gz">tossam-201307181351.tar.gz</a> (<a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-201307181351-1.rockspec">rockspec</a>)</p>
+<p>Download: <a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-201307261448.tar.gz">tossam-201307261448.tar.gz</a> 
+(<a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-201307261448-1.rockspec">rockspec</a>)</p>
   
 <p>TOSSAM uses Lua 5.1 and the packages:</p>
 
@@ -92,24 +105,12 @@ braces) in order to associate the serial message with the nx_struct definition.<
   <li><strong>Single-precision floating-point</strong>: nx_float.</li>
 </ul>
 
-<p>Every message is received as a table with the fields defined in the
-nx_struct. Besides, TOSSAM put in the index <strong>1</strong> the identifier
-and in the index <strong>2</strong> the name of the nx_struct.</p>
+<p>Every message is received as a table, and it contains the fields
+defined in the nx_struct. Besides, TOSSAM put in the
+index <strong>1</strong> the identifier and in the
+index <strong>2</strong> the name of the nx_struct.</p>
 
-<p>Arrays are also mapped to tables, however, this version supports
-only unidimensional arrays.</p>
-
-<p>You can specify arrays with fixed or variable sizes. In the last
-case, the size should be a variable already defined in the structure,
-for example:</p>
-
-<pre>
-nx_struct my_arrays [20] {
-  nx_uint8_t size;
-  nx_uint8_t fix[3];
-  nx_uint8_t variable[size];
-};
-</pre>
+<p>Scalar values are mapped to Lua numbers and arrays to tables.</p>
 
 <hr>
 
