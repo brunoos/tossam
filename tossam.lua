@@ -5,6 +5,7 @@
 --
 local codec  = require("tossam.codec")
 local serial = require("tossam.serial")
+local sf     = require("tossam.sf")
 
 local string = require("string")
 local table  = require("table")
@@ -13,6 +14,7 @@ local type         = type
 local print        = print
 local pairs        = pairs
 local ipairs       = ipairs
+local tonumber     = tonumber
 local setmetatable = setmetatable
 
 module("tossam")
@@ -30,27 +32,27 @@ nx_struct header[0] {
 
 local defheader = (codec.parser(strheader))[1]
 
-local function register(srl, str)
+local function register(conn, str)
    local defs, err = codec.parser(str)
    if err then return false, err end
    local tmp = {}
    for i, def in ipairs(defs) do
-     if srl.defs[def.id] or tmp[def.id] then
+     if conn.defs[def.id] or tmp[def.id] then
         return false, "AM type already defined: " .. def.name
      else
         tmp[def.id] = true
      end
    end
    for i, def in ipairs(defs) do
-     srl.defs[def.id]   = def
-     srl.defs[def.name] = def
+     conn.defs[def.id]   = def
+     conn.defs[def.name] = def
    end
    return true
 end
 
-local function registered(srl)
+local function registered(conn)
   local defs = {}
-  for k, v in pairs(srl.defs) do
+  for k, v in pairs(conn.defs) do
     if type(k) == "string" then
       defs[k] = v.id
     end
@@ -58,25 +60,25 @@ local function registered(srl)
   return defs
 end
 
-local function unregister(srl, id)
-  local def = srl.defs[id]
+local function unregister(conn, id)
+  local def = conn.defs[id]
   if def then
-    srl.defs[def.id]   = nil
-    srl.defs[def.name] = nil
+    conn.defs[def.id]   = nil
+    conn.defs[def.name] = nil
     return true
   end
   return false
 end
 
-local function close(srl)
-   return serial.close(srl.port)
+local function close(conn)
+   return conn.port:close()
 end
 
-local function receive(srl)
-   local pck = serial.recv(srl.port)
+local function receive(conn)
+   local pck = conn.port:recv()
    if not pck then return nil end
    local head = codec.decode(defheader, pck, 1)
-   local def = srl.defs[head.type]
+   local def = conn.defs[head.type]
    if not def then
       return nil, "Unknown AM type"
    end
@@ -87,12 +89,12 @@ local function receive(srl)
    return payload
 end
 
-local function send(srl, payload, def)
+local function send(conn, payload, def)
    def = def or payload[1]
    if (type(def) ~= "number" and type(def) ~= "string") then
       return false, "Invalid parameters"
    end
-   def = srl.defs[def]
+   def = conn.defs[def]
    if not def then
       return false, "Unknown AM type"
    end
@@ -106,7 +108,7 @@ local function send(srl, payload, def)
       type = def.id,
    }
    head = codec.encode(defheader, head)
-   if serial.send(srl.port, head..payload) then
+   if conn.port:send(head..payload) then
       return true
    end
    return false, "Could not send the message"
@@ -122,9 +124,20 @@ meta.__index = {
   unregister = unregister,
 }
 
-function connect(dev, baud)
-  local port, err = serial.open(dev, baud)
-  if err then return nil, err end
-  local srl = { port = port, defs = {} }
-  return setmetatable(srl, meta)
+function connect(link)
+  local port, msg
+  local patt = "([^@]+)@([^:]+):(.+)"
+  local kind, arg1, arg2 = string.match(link, patt)
+  if kind == "serial" then
+    port, msg = serial.open(arg1, tonumber(arg2) or arg2)
+  elseif kind == "sf" then
+    port, msg = sf.open(arg1, tonumber(arg2))
+  else
+    return nil, "invalid connection type"
+  end
+  if not port then
+    return nil, msg
+  end
+  local conn = { port = port, defs = {} }
+  return setmetatable(conn, meta)
 end

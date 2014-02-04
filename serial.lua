@@ -17,6 +17,8 @@ local ipairs = ipairs
 local unpack = unpack
 local print  = print
 
+local setmetatable = setmetatable
+
 local band   = bit.band
 local bor    = bit.bor
 local bxor   = bit.bxor
@@ -205,6 +207,14 @@ function close(srl)
   srl.port:close()
 end
 
+local meta = {
+  __index = {
+    recv  = recv,
+    send  = send,
+    close = close,
+  }
+}
+
 function open(portname, baud)
   if type(baud) == "string" then
     baud = mote2baud[baud]
@@ -246,5 +256,5 @@ function open(portname, baud)
     port  = port,
   }
 
-  return srl
+  return setmetatable(srl, meta)
 end
