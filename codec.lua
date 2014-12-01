@@ -3,20 +3,14 @@
 -- author: Bruno Silvestre
 -- e-mail: brunoos@inf.ufg.br
 -- 
+
 local re     = require("re")
 local struct = require("struct")
 
 local string = require("string")
 local table  = require("table")
 
-local print    = print
-local type     = type
-local pairs    = pairs
-local ipairs   = ipairs
-local tostring = tostring
-local tonumber = tonumber
-
-module("tossam.codec")
+--------------------------------------------------------------------------------
 
 local grammar = [==[
 structs <- s {| struct+ (!. / error) |}
@@ -104,7 +98,7 @@ local function check(def)
   return true
 end
 
-function parser(str)
+local function parser(str)
   local defs = re.match(str, grammar)
   local err = defs[#defs]
   if err.kind == "ERROR" then
@@ -119,6 +113,7 @@ function parser(str)
 end
 
 --------------------------------------------------------------------------------
+
 local function arraydec(levels, level, fmt, data, pos)
   local tb
   local size = levels[level]
@@ -147,7 +142,7 @@ local function arrayenc(levels, level, fmt, value, data)
   end
 end
 
-function decode(def, data, pos)
+local function decode(def, data, pos)
   local fmt, value
   local payload = {}
   for k, field in ipairs(def.block) do
@@ -163,7 +158,7 @@ function decode(def, data, pos)
   return payload
 end
 
-function encode(def, payload)
+local function encode(def, payload)
   local fmt, value
   local data = {}
   for k, field in ipairs(def.block) do
@@ -178,3 +173,11 @@ function encode(def, payload)
   end
   return table.concat(data)
 end
+
+--------------------------------------------------------------------------------
+-- Module
+return {
+  parser = parser,
+  encode = encode,
+  decode = decode
+}

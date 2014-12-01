@@ -3,6 +3,7 @@
 -- author: Bruno Silvestre
 -- e-mail: brunoos@inf.ufg.br
 --
+
 local codec  = require("tossam.codec")
 local serial = require("tossam.serial")
 local sf     = require("tossam.sf")
@@ -10,14 +11,7 @@ local sf     = require("tossam.sf")
 local string = require("string")
 local table  = require("table")
 
-local type         = type
-local print        = print
-local pairs        = pairs
-local ipairs       = ipairs
-local tonumber     = tonumber
-local setmetatable = setmetatable
-
-module("tossam")
+--------------------------------------------------------------------------------
 
 local strheader = [[
 nx_struct header[0] {
@@ -124,7 +118,7 @@ meta.__index = {
   unregister = unregister,
 }
 
-function connect(link)
+local function connect(link)
   local port, msg
   local patt = "([^@]+)@([^:]+):(.+)"
   local kind, arg1, arg2 = string.match(link, patt)
@@ -141,3 +135,7 @@ function connect(link)
   local conn = { port = port, defs = {} }
   return setmetatable(conn, meta)
 end
+
+--------------------------------------------------------------------------------
+-- Module
+return { connect = connect }

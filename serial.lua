@@ -3,6 +3,7 @@
 -- author: Bruno Silvestre
 -- e-mail: brunoos@inf.ufg.br
 --
+
 local bit   = require("bit")
 local rs232 = require("luars232")
 
@@ -10,22 +11,13 @@ local string = require("string")
 local table  = require("table")
 local io     = require("io")
 
-local type   = type
-local next   = next
-local pairs  = pairs
-local ipairs = ipairs
-local unpack = unpack
-local print  = print
-
-local setmetatable = setmetatable
-
 local band   = bit.band
 local bor    = bit.bor
 local bxor   = bit.bxor
 local rshift = bit.rshift
 local lshift = bit.lshift
 
-module("tossam.serial")
+--------------------------------------------------------------------------------
 
 -- HDLC flags
 local HDLC_SYNC   = 0x7E
@@ -174,7 +166,7 @@ local function lowsend(port, str)
   end
 end
 
-function send(srl, str)
+local function send(srl, str)
   local succ, errmsg = lowsend(srl.port, str)
   if succ then
     local pack, kind = lowrecv(srl.port, srl.rbuf)
@@ -188,7 +180,7 @@ function send(srl, str)
   return false, errmsg
 end
 
-function recv(srl)
+local function recv(srl)
   if next(srl.queue) then
     local buffer = table.remove(srl.queue, 1)
     return string.char(unpack(buffer))
@@ -203,7 +195,7 @@ function recv(srl)
   end
 end
 
-function close(srl)
+local function close(srl)
   srl.port:close()
 end
 
@@ -215,7 +207,7 @@ local meta = {
   }
 }
 
-function open(portname, baud)
+local function open(portname, baud)
   if type(baud) == "string" then
     baud = mote2baud[baud]
     if not baud then
@@ -258,3 +250,7 @@ function open(portname, baud)
 
   return setmetatable(srl, meta)
 end
+
+--------------------------------------------------------------------------------
+-- Module
+return { open = open }

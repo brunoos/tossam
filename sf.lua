@@ -1,10 +1,6 @@
 local socket = require("socket")
 local string = require("string")
 
-local setmetatable = setmetatable
-
-module("tossam.sf")
-
 local function recv(sf)
   local len, msg = sf.conn:receive(1)
   if msg then
@@ -47,7 +43,7 @@ local meta = {
   }
 }
 
-function open(host, port)
+local function open(host, port)
   local conn = socket.tcp()
   local succ, msg = conn:connect(host, port)
   if not succ then
@@ -67,3 +63,8 @@ function open(host, port)
 
   return setmetatable(sf, meta)
 end
+
+--------------------------------------------------------------------------------
+-- Module
+
+return { open = open }
