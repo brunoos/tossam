@@ -4,12 +4,12 @@
 -- e-mail: brunoos@inf.ufg.br
 --
 
-local codec  = require("tossam.codec")
-local serial = require("tossam.serial")
-local sf     = require("tossam.sf")
-
 local string = require("string")
 local table  = require("table")
+local codec  = require("tossam.codec")
+local hdlc   = require("tossam.hdlc")
+local serial = require("tossam.serial")
+local sf     = require("tossam.sf")
 
 --------------------------------------------------------------------------------
 
