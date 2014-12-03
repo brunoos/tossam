@@ -166,11 +166,16 @@ local function close(buffer)
   buffer.port:close()
 end
 
+local function settimeout(buffer, v)
+  buffer.port:settimeout(v)
+end
+
 local meta = {
   __index = {
-    recv  = recv,
-    send  = send,
-    close = close,
+    recv       = recv,
+    send       = send,
+    close      = close,
+    settimeout = settimeout,
   }
 }
 
