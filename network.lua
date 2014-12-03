@@ -1,10 +1,10 @@
 local socket = require("socket")
 
-local function recv(net, size)
-  return net.conn:recv(size)
+local function read(net, size)
+  return net.conn:receive(size)
 end
 
-local function send(net, data)
+local function write(net, data)
   return net.conn:send(data)
 end
 
@@ -18,8 +18,8 @@ end
 
 local meta = {
   __index = {
-    recv       = recv,
-    send       = send,
+    read       = read,
+    write      = write,
     close      = close,
     settimeout = settimeout
   }
