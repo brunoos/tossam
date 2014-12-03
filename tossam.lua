@@ -69,8 +69,8 @@ local function close(conn)
 end
 
 local function receive(conn)
-   local pck = conn.port:recv()
-   if not pck then return nil end
+   local pck, err = conn.port:recv()
+   if not pck then return nil, err end
    local head = codec.decode(defheader, pck, 1)
    local def = conn.defs[head.type]
    if not def then
@@ -95,17 +95,14 @@ local function send(conn, payload, def)
    payload = codec.encode(def, payload)
    local head = {
       am   = 0,
+      dst  = conn.dst,
       src  = 0,
-      dst  = 0xFFFF,
       len  = #payload,
       grp  = 0,
       type = def.id,
    }
    head = codec.encode(defheader, head)
-   if conn.port:send(head..payload) then
-      return true
-   end
-   return false, "Could not send the message"
+   return conn.port:send(head..payload)
 end
 
 local meta = { }
@@ -118,21 +115,22 @@ meta.__index = {
   unregister = unregister,
 }
 
-local function connect(link)
+local function connect(conf)
   local port, msg
-  local patt = "([^@]+)@([^:]+):(.+)"
-  local kind, arg1, arg2 = string.match(link, patt)
-  if kind == "serial" then
-    port, msg = serial.open(arg1, tonumber(arg2) or arg2)
-  elseif kind == "sf" then
-    port, msg = sf.open(arg1, tonumber(arg2))
+  if conf.protocol == "serial" then
+    port, msg = serial.open(conf.port, conf.baud)
+  elseif conf.protocol == "sf" then
+    port, msg = sf.open(conf.host, conf.port)
   else
-    return nil, "invalid connection type"
+    return nil, "invalid protocol"
   end
   if not port then
     return nil, msg
   end
-  local conn = { port = port, defs = {} }
+  if conf.protocol == "serial" then
+    port = hdlc.wrap(port)
+  end
+  local conn = { port = port, defs = {}, dst = conf.nodeid }
   return setmetatable(conn, meta)
 end
 
