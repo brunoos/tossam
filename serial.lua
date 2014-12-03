@@ -49,11 +49,16 @@ local function close(srl)
   srl.port:close()
 end
 
+local function settimeout(srl, v)
+  timeout = v
+end
+
 local meta = {
   __index = {
-    read  = read,
-    write = write,
-    close = close,
+    read       = read,
+    write      = write,
+    close      = close,
+    settimeout = settimeout,
   }
 }
 

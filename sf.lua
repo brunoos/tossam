@@ -1,5 +1,4 @@
 local socket = require("socket")
-local string = require("string")
 
 local function recv(sf)
   local len, msg = sf.conn:receive(1)
@@ -35,11 +34,16 @@ local function close(sf)
   return sf.conn:close()
 end
 
+local function settimeout(sf, v)
+  sf.conn:settimeout(v)
+end
+
 local meta = {
   __index = {
-    recv  = recv,
-    send  = send,
-    close = close,
+    recv       = recv,
+    send       = send,
+    close      = close,
+    settimeout = settimeout,
   }
 }
 
@@ -59,6 +63,7 @@ local function open(host, port)
     return nil, "invalid version"
   end
 
+  conn:settimeout(1000)
   local sf = { conn = conn }
 
   return setmetatable(sf, meta)

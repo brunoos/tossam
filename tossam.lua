@@ -105,6 +105,10 @@ local function send(conn, payload, def)
    return conn.port:send(head..payload)
 end
 
+local function settimeout(conn, v)
+  conn.port:settimeout(v)
+end
+
 local meta = { }
 meta.__index = {
   close      = close,
@@ -112,6 +116,7 @@ meta.__index = {
   receive    = receive,
   register   = register,
   registered = registered,
+  settimeout = settimeout,
   unregister = unregister,
 }
 
