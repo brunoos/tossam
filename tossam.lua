@@ -4,12 +4,11 @@
 -- e-mail: brunoos@inf.ufg.br
 --
 
-local string = require("string")
-local table  = require("table")
 local codec  = require("tossam.codec")
 local hdlc   = require("tossam.hdlc")
 local serial = require("tossam.serial")
 local sf     = require("tossam.sf")
+local net    = require("tossam.network")
 
 --------------------------------------------------------------------------------
 
@@ -126,13 +125,15 @@ local function connect(conf)
     port, msg = serial.open(conf.port, conf.baud)
   elseif conf.protocol == "sf" then
     port, msg = sf.open(conf.host, conf.port)
+  elseif conf.protocol == "network" then
+    port, msg = net.open(conf.host, conf.port)
   else
     return nil, "invalid protocol"
   end
   if not port then
     return nil, msg
   end
-  if conf.protocol == "serial" then
+  if conf.protocol == "serial" or conf.protocol == "network" then
     port = hdlc.wrap(port)
   end
   local conn = { port = port, defs = {}, dst = conf.nodeid }
