@@ -30,7 +30,12 @@
 <pre>
 local tossam = require("tossam") 
 
-local micaz = tossam.connect("serial@/dev/ttyUSB1:micaz") 
+local micaz = tossam.connect {
+  protocol = "serial",
+  port     = "/dev/ttyUSB1",
+  baud     = "micaz",
+  nodeid   = 1
+}
 
 micaz:register [[ 
   nx_struct msg_serial [50] { 
@@ -71,8 +76,8 @@ micaz:close()
 <a name="Install"></a>
 <h4>Install</h4>
 
-<p>Download: <a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.1.tar.gz">tossam-0.1.tar.gz</a> 
-(<a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.1-1.rockspec">rockspec</a>)</p>
+<p>Download: <a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.2.tar.gz">tossam-0.2.tar.gz</a> 
+(<a href="http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.2-1.rockspec">rockspec</a>)</p>
   
 <p>TOSSAM uses Lua 5.1 and the packages:</p>
 
@@ -81,6 +86,7 @@ micaz:close()
   <li>lpeg 0.12</li>
   <li>struct 1.4</li>
   <li>luars232 1.0.3</li>
+  <li>luasocket 3.0-rc1</li>
 </ul>
 
 <p class="muted">These packages are available in Luarocks.</p>
@@ -117,23 +123,23 @@ index <strong>2</strong> the name of the nx_struct.</p>
 <a name="API"></a>
 <h4>API</h4>
 
-<h5>tossam.connect(link)</h5>
+<h5>tossam.connect(conf)</h5>
 
-<p>Connects to a mote in the serial port or serial forwarder, and returns
-an object that represents this connection.<p>
+<p>Connects to a mote using serial port, serial
+ forwarder, or network.
+It returns an object that represents this connection.<p>
 
-<p><code>link</code> must be one of these two forms:</p>
+<p><code>conf</code> is a table with information to establish the connection.</p>
+
+<p>For serial connection, <code>conf</code> must have those field:</p>
 <ul>
-  <li>"sf@HOST:PORT"</li>
-  <li>"serial@PORT:BAUD"</li>
+  <li><code>protocol</code>: with the string <code>"serial"</code>.</li>
+  <li><code>port</code>: string with the serial port name. For example, <code>"/dev/ttyUSB0"</code></li>
+  <li><code>baud</code>: the baud rate can be a number (e.g., 57600); or a mote model (see list below).</li>
+  <li><code>nodeid</code>: mote ID (number) to connect with.</li>
 </ul>
 
-<p>In the first case, TOSSAM uses serial forward protocol. <code>HOST</code> is the network address
-of the serial forwarder and <code>PORT</code> is the port number.</p>
-
-<p>In the second case, <code>PORT</code> is the serial port identification. <code>BAUD</code>
-can be the baud rate or one of these mote models:</p>
-
+<p>TOSSAM supports the following mote models as baud rate:</p>
 <ul>
   <li>eyesifx</li>
   <li>intelmote2</li>
@@ -150,19 +156,57 @@ can be the baud rate or one of these mote models:</p>
   <li>ucmini</li>
 </ul>
 
-<p>Example of links:</p>
+<p>Serial connection example:</p>
+<pre>
+local conn = tossam.connect {
+  protocol = "serial",
+  port     = "/dev/ttyUSB0",
+  baud     = "telosb",
+  nodeid   = 1
+}
+</pre>
+
+<p>For serial forwarder connection, <code>conf</code>'s fields are:</p>
 <ul>
- <li>"sf@localhost:9003"</li>
- <li>"sf@127.0.0.1:9003"</li>
- <li>"serial@/dev/ttyUSB1:57600"</li>
- <li>"serial@/dev/ttyUSB1:micaz"</li>
+  <li><code>protocol</code>: with the string <code>"sf"</code>.</li>
+  <li><code>host</code>: host address (name or IP).</li>
+  <li><code>port</code>: port number.</li>
+  <li><code>nodeid</code>: mote ID (number) to connect with.</li>
 </ul>
 
-<h5>obj:close()</h5>
+<p>Serial forwarder connection example:</p>
+<pre>
+local conn = tossam.connect {
+  protocol = "sf",
+  host     = "localhost",
+  port     = 9003,
+  nodeid   = 1
+}
+</pre>
 
-<p>Closes the serial connection.</p>
+<p>For network connection, <code>conf</code> must have the fields:</p>
+<ul>
+  <li><code>protocol</code>: with the string <code>"network"</code>.</li>
+  <li><code>host</code>: host address (name or IP).</li>
+  <li><code>port</code>: port number.</li>
+  <li><code>nodeid</code>: mote ID (number) to connect with.</li>
+</ul>
 
-<h5>obj:register(def)</h5>
+<p> This kind of connection is used with simulators, when serial port is exported using socket.</p>
+
+<p>Network connection example:</p>
+<pre>
+local conn = tossam.connect {
+  protocol = "network",
+  host     = "localhost",
+  port     = 6001,
+  nodeid   = 1
+}
+</pre>
+
+<hr>
+
+<h5>conn:register(def)</h5>
 
 <p>Registers nx_structs on the object. It returns <code>true</code> for
 success, or <code>false</code>, followed by an error message,
@@ -172,12 +216,16 @@ otherwise.</p>
 definitions. You do not need to register all structures at once, the
 function can be called several times.</p>
 
-<h5>obj:registered()</h5>
+<hr>
 
-<p>Returns a table with all the registered structures. The key is
+<h5>conn:registered( )</h5>
+
+<p>Returns a table with all registered structures. The key is
 the name of the structure and the value its identifies.</p>
 
-<h5>obj:unregister(id)</h5>
+<hr>
+
+<h5>conn:unregister(id)</h5>
 
 <p>Unregisters a structure. The parameter <code>id</code> can be a
 number or the name of the structure.</p>
@@ -185,7 +233,9 @@ number or the name of the structure.</p>
 <p>The function returns <code>true</code> for success, or
 <code>false</code> if the structure was not registered.</p>
 
-<h5>obj:send(msg [, id])</h5>
+<hr>
+
+<h5>conn:send(msg [, id])</h5>
 
 <p>Sends a message thought the serial port. <code>msg</code> is a
 table that contains the pairs (name,value) for each field defined
@@ -200,10 +250,20 @@ used.</p>
 <p>In case of error, the function returns <code>nil</code> followed
 by the error message.</p>
 
-<h5>obj:receive()</h5>
+<hr>
+
+<h5>conn:receive( )</h5>
 
 <p>Returns the AM message received, or <code>nil</code> followed by an
 error message. This operation is blocking.</p>
+
+<hr>
+
+<h5>conn:close( )</h5>
+
+<p>Closes the connection.</p>
+
+<br>
 
 </div>
 
