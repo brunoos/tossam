@@ -129,10 +129,7 @@ local function lowsend(port, str)
     end
   end
   pack[#pack+1] = HDLC_SYNC
-
   str = string.char(unpack(pack))
-
-  -- TODO: deal with timeout
   return port:write(str)
 end
 
@@ -177,7 +174,7 @@ local meta = {
   }
 }
 
-local function create(port)
+local function wrap(port)
   local buffer = {
     -- HDLC control
     data   = nil,
@@ -195,4 +192,4 @@ end
 
 --------------------------------------------------------------------------------
 -- Module
-return { create = create }
+return { wrap = wrap }
