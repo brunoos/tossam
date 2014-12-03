@@ -7,7 +7,7 @@
 local rs232 = require("luars232")
 
 --------------------------------------------------------------------------------
-local timeout = 100
+local timeout = 1000
 
 local mote2baud = {
   eyesifx    = rs232.RS232_BAUD_57600,
