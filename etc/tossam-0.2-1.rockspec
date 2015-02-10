@@ -1,6 +1,6 @@
 rockspec_format = "1.0"
 package = "tossam"
-version = "0.2rc1-1"
+version = "0.2-1"
 
 description = {
   summary = "TinyOS Serial AM message for Lua",
@@ -11,7 +11,7 @@ description = {
 }
 
 source = {
-  url = "http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.2-rc1.tar.gz",
+  url = "http://www.inf.ufg.br/~brunoos/tossam/download/tossam-0.2.tar.gz",
 }
 
 dependencies = {
