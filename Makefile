@@ -1,5 +1,4 @@
-#LUA_LPATH=/usr/local/share/lua/5.1
-LUA_LPATH=/home/brunoos/local/rocks-5.1/share/lua/5.1
+LUA_LPATH=/usr/local/share/lua/5.1
 
 install:
 	mkdir -p      $(LUA_LPATH)/tossam
