@@ -64,11 +64,11 @@ local function unregister(conn, id)
 end
 
 local function close(conn)
-   return conn.port:close()
+   return conn.back:close()
 end
 
 local function receive(conn)
-   local pck, err = conn.port:recv()
+   local pck, err = conn.back:recv()
    if not pck then return nil, err end
    local head = codec.decode(defheader, pck, 1)
    local def = conn.defs[head.type]
@@ -101,15 +101,15 @@ local function send(conn, payload, def)
       type = def.id,
    }
    head = codec.encode(defheader, head)
-   return conn.port:send(head..payload)
+   return conn.back:send(head..payload)
 end
 
 local function settimeout(conn, v)
-  conn.port:settimeout(v)
+  conn.back:settimeout(v)
 end
 
 local function backend(conn)
-  return conn.port:backend()
+  return conn.back:backend()
 end
 
 local meta = { }
@@ -125,27 +125,27 @@ meta.__index = {
 }
 
 local function connect(conf)
-  local port, msg
+  local backend, msg
   if conf.protocol == "serial" then
-    port, msg = serial.open(conf.port, conf.baud)
+    backend, msg = serial.open(conf.port, conf.baud)
   elseif conf.protocol == "sf" then
-    port, msg = sf.open(conf.host, conf.port)
+    backend, msg = sf.open(conf.host, conf.port)
   elseif conf.protocol == "network" then
-    port, msg = net.open(conf.host, conf.port)
+    backend, msg = net.open(conf.host, conf.port)
   elseif conf.protocol == "external" then
-    port = conf.port
+    backend = conf.backend
   else
     return nil, "invalid protocol"
   end
-  if not port then
+  if not backend then
     return nil, msg
   end
   local conn = {}
   if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
-    port = hdlc.wrap(port)
+    backend = hdlc.wrap(backend)
   end
   conn.defs = {}
-  conn.port = port
+  conn.back = backend
   conn.dst  = conf.nodeid
   return setmetatable(conn, meta)
 end

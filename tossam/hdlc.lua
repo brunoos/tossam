@@ -59,9 +59,9 @@ local function checksum(data)
   return crc
 end
 
-local function lowrecv(port, buffer)
+local function lowrecv(back, buffer)
   while true do
-    local data, err = port:read(1)
+    local data, err = back:read(1)
     if data then
       data = string.byte(data)
       if buffer.sync then
@@ -108,7 +108,7 @@ local function lowrecv(port, buffer)
   end
 end
 
-local function lowsend(port, str)
+local function lowsend(back, str)
   local data = { string.byte(str, 1, #str) }
 
   table.insert(data, 1, SERIAL_PROTO_PACKET_ACK)
@@ -130,13 +130,13 @@ local function lowsend(port, str)
   end
   pack[#pack+1] = HDLC_SYNC
   str = string.char(unpack(pack))
-  return port:write(str)
+  return back:write(str)
 end
 
 local function send(buffer, str)
-  local succ, errmsg = lowsend(buffer.port, str)
+  local succ, errmsg = lowsend(buffer.back, str)
   if succ then
-    local pack, kind = lowrecv(buffer.port, buffer)
+    local pack, kind = lowrecv(buffer.back, buffer)
     if kind == SERIAL_PROTO_ACK then
       return true, true
     elseif kind == SERIAL_PROTO_PACKET_NOACK then
@@ -153,7 +153,7 @@ local function recv(buffer)
     return string.char(unpack(data))
   end
   while true do
-    local data, kind = lowrecv(buffer.port, buffer)
+    local data, kind = lowrecv(buffer.back, buffer)
     if not data then
       return nil, kind
     elseif kind == SERIAL_PROTO_PACKET_NOACK then
@@ -163,15 +163,15 @@ local function recv(buffer)
 end
 
 local function close(buffer)
-  buffer.port:close()
+  buffer.back:close()
 end
 
 local function settimeout(buffer, v)
-  buffer.port:settimeout(v)
+  buffer.back:settimeout(v)
 end
 
 local function backend(buffer)
-  return buffer.port:backend()
+  return buffer.back:backend()
 end
 
 local meta = {
@@ -184,7 +184,7 @@ local meta = {
   }
 }
 
-local function wrap(port)
+local function wrap(back)
   local buffer = {
     -- HDLC control
     data   = nil,
@@ -194,7 +194,7 @@ local function wrap(port)
     -- Received data
     queue  = {},
     -- Datasource
-    port   = port,
+    back   = back,
   }
 
   return setmetatable(buffer, meta)
