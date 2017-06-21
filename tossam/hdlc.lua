@@ -117,7 +117,7 @@ local function lowsend(port, str)
 
   local crc = checksum(data) 
   data[#data+1] = band(crc, 0xFF)
-  data[#data+1] = band(rshift(crc, 8))
+  data[#data+1] = band(rshift(crc, 8), 0xFF)
 
   local pack = {HDLC_SYNC}
   for k, v in ipairs(data) do
