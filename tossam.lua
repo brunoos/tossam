@@ -141,7 +141,7 @@ local function connect(conf)
     return nil, msg
   end
   local conn = {}
-  if conf.protocol == "serial" or conf.protocol == "network" then
+  if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
     port = hdlc.wrap(port)
   end
   conn.defs = {}
