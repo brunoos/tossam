@@ -109,7 +109,10 @@ local function settimeout(conn, v)
 end
 
 local function port(conn)
-  return (conn.port.port or conn.port)
+  if conn.hdlc then
+    return conn.port.port
+  end
+  return conn.port
 end
 
 local meta = { }
@@ -132,16 +135,22 @@ local function connect(conf)
     port, msg = sf.open(conf.host, conf.port)
   elseif conf.protocol == "network" then
     port, msg = net.open(conf.host, conf.port)
+  elseif conf.protocol == "external" then
+    port = conf.port
   else
     return nil, "invalid protocol"
   end
   if not port then
     return nil, msg
   end
-  if conf.protocol == "serial" or conf.protocol == "network" then
+  local conn = {}
+  if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
     port = hdlc.wrap(port)
+    conn.hdlc = true
   end
-  local conn = { port = port, defs = {}, dst = conf.nodeid }
+  conn.defs = {}
+  conn.port = port
+  conn.dst  = conf.nodeid
   return setmetatable(conn, meta)
 end
 
