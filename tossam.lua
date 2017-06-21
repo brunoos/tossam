@@ -108,17 +108,14 @@ local function settimeout(conn, v)
   conn.port:settimeout(v)
 end
 
-local function port(conn)
-  if conn.hdlc then
-    return conn.port.port
-  end
-  return conn.port
+local function backend(conn)
+  return conn.port:backend()
 end
 
 local meta = { }
 meta.__index = {
+  backend    = backend,
   close      = close,
-  port       = port,
   receive    = receive,
   register   = register,
   registered = registered,
@@ -144,9 +141,8 @@ local function connect(conf)
     return nil, msg
   end
   local conn = {}
-  if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
+  if conf.protocol == "serial" or conf.protocol == "network" then
     port = hdlc.wrap(port)
-    conn.hdlc = true
   end
   conn.defs = {}
   conn.port = port

@@ -53,12 +53,17 @@ local function settimeout(srl, v)
   timeout = v
 end
 
+local function backend(srl)
+  return srl.port
+end
+
 local meta = {
   __index = {
     read       = read,
     write      = write,
     close      = close,
     settimeout = settimeout,
+    backend    = backend,
   }
 }
 

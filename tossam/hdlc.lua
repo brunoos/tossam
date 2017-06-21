@@ -170,12 +170,17 @@ local function settimeout(buffer, v)
   buffer.port:settimeout(v)
 end
 
+local function backend(buffer)
+  return buffer.port:backend()
+end
+
 local meta = {
   __index = {
     recv       = recv,
     send       = send,
     close      = close,
     settimeout = settimeout,
+    backend    = backend
   }
 }
 

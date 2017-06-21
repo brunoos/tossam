@@ -38,12 +38,17 @@ local function settimeout(sf, v)
   sf.conn:settimeout(v)
 end
 
+local function backend(sf)
+  return sf.conn
+end
+
 local meta = {
   __index = {
     recv       = recv,
     send       = send,
     close      = close,
     settimeout = settimeout,
+    backend    = backend,
   }
 }
 

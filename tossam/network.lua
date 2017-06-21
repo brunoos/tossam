@@ -16,12 +16,17 @@ local function settimeout(net, v)
   net.conn:settimeout(v)
 end
 
+local function backend(net)
+  return net.conn
+end
+
 local meta = {
   __index = {
     read       = read,
     write      = write,
     close      = close,
-    settimeout = settimeout
+    settimeout = settimeout,
+    backend    = backend,
   }
 }
 
