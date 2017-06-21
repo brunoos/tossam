@@ -108,13 +108,18 @@ local function settimeout(conn, v)
   conn.port:settimeout(v)
 end
 
+local function port(conn)
+  return (conn.port.port or conn.port)
+end
+
 local meta = { }
 meta.__index = {
   close      = close,
-  send       = send,
+  port       = port,
   receive    = receive,
   register   = register,
   registered = registered,
+  send       = send,
   settimeout = settimeout,
   unregister = unregister,
 }
