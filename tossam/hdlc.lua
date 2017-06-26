@@ -158,6 +158,10 @@ local function recv(buffer)
       return nil, kind
     elseif kind == SERIAL_PROTO_PACKET_NOACK then
       return string.char(unpack(data))
+    elseif kind == SERIAL_PROTO_PACKET_ACK then
+      -- Remove 'seqno' field
+      table.remove(data, 1)
+      return string.char(unpack(data))
     end
   end
 end
