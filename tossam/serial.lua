@@ -7,8 +7,6 @@
 local rs232 = require("luars232")
 
 --------------------------------------------------------------------------------
-local timeout = 1000
-
 local mote2baud = {
   eyesifx    = rs232.RS232_BAUD_57600,
   intelmote2 = rs232.RS232_BAUD_115200,
@@ -26,7 +24,7 @@ local mote2baud = {
 }
 
 local function read(srl, size)
-  local err, data = srl.port:read(size, timeout)
+  local err, data = srl.port:read(size, srl.timeout)
   if err == rs232.RS232_ERR_NOERROR then
     return data
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -36,7 +34,7 @@ local function read(srl, size)
 end
 
 local function write(srl, data)
-  local err = srl.port:write(data, timeout)
+  local err = srl.port:write(data, srl.timeout)
   if err == rs232.RS232_ERR_NOERROR then
     return true
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -50,7 +48,7 @@ local function close(srl)
 end
 
 local function settimeout(srl, v)
-  timeout = v
+  self.timeout = v
 end
 
 local function backend(srl)
@@ -97,7 +95,7 @@ local function open(portname, baud)
      return nil, "Serial port setup error"
   end
 
-  local srl = { port = port }
+  local srl = { port = port, timeout = 1000 }
 
   return setmetatable(srl, meta)
 end
