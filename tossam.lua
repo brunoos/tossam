@@ -68,7 +68,7 @@ local function close(conn)
 end
 
 local function receive(conn)
-   local pck, err = conn.back:recv()
+   local pck, err = conn.back:receive()
    if not pck then return nil, err end
    local head = codec.decode(defheader, pck, 1)
    local def = conn.defs[head.type]

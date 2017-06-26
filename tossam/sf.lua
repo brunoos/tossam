@@ -1,6 +1,6 @@
 local socket = require("socket")
 
-local function recv(sf)
+local function receive(sf)
   local len, msg = sf.conn:receive(1)
   if msg then
     return nil, msg
@@ -44,7 +44,7 @@ end
 
 local meta = {
   __index = {
-    recv       = recv,
+    receive    = receive,
     send       = send,
     close      = close,
     settimeout = settimeout,

@@ -147,7 +147,7 @@ local function send(buffer, str)
   return false, errmsg
 end
 
-local function recv(buffer)
+local function receive(buffer)
   if next(buffer.queue) then
     local data = table.remove(buffer.queue, 1)
     return string.char(unpack(data))
@@ -180,7 +180,7 @@ end
 
 local meta = {
   __index = {
-    recv       = recv,
+    receive    = receive,
     send       = send,
     close      = close,
     settimeout = settimeout,
