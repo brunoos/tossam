@@ -143,7 +143,7 @@ local meta = {
 
 local function wrap(back)
   local hdlc = {
-    queue  = nil,
+    buffer = nil,
     escape = false,
     sync   = false,
     back   = back
