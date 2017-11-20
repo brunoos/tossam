@@ -58,15 +58,17 @@ local function open(host, port)
   if not succ then
     return nil, msg
   end
+  conn:setoption('tcp-nodelay', true)
+
   -- Receive their version
   local version = conn:receive(2)
-  -- Send our version
-  conn:send("U ")
-
   -- Valid version?
   if version ~= "U " then
     return nil, "invalid version"
   end
+
+  -- Send our version
+  conn:send("U ")
 
   conn:settimeout(1000)
   local sf = { conn = conn }

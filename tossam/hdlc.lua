@@ -59,9 +59,9 @@ local function checksum(data)
   return crc
 end
 
-local function lowrecv(back, buffer)
+local function lowrecv(backend, buffer)
   while true do
-    local data, err = back:read(1)
+    local data, err = backend:receive()
     if data then
       data = string.byte(data)
       if buffer.sync then
@@ -108,7 +108,7 @@ local function lowrecv(back, buffer)
   end
 end
 
-local function lowsend(back, str)
+local function lowsend(backend, str)
   local data = { string.byte(str, 1, #str) }
 
   table.insert(data, 1, SERIAL_PROTO_PACKET_ACK)
@@ -130,13 +130,13 @@ local function lowsend(back, str)
   end
   pack[#pack+1] = HDLC_SYNC
   str = string.char(unpack(pack))
-  return back:write(str)
+  return backend:send(str)
 end
 
 local function send(buffer, str)
-  local succ, errmsg = lowsend(buffer.back, str)
+  local succ, errmsg = lowsend(buffer.backend, str)
   if succ then
-    local pack, kind = lowrecv(buffer.back, buffer)
+    local pack, kind = lowrecv(buffer.backend, buffer)
     if kind == SERIAL_PROTO_ACK then
       return true, true
     elseif kind == SERIAL_PROTO_PACKET_NOACK then
@@ -153,7 +153,7 @@ local function receive(buffer)
     return string.char(unpack(data))
   end
   while true do
-    local data, kind = lowrecv(buffer.back, buffer)
+    local data, kind = lowrecv(buffer.backend, buffer)
     if not data then
       return nil, kind
     elseif kind == SERIAL_PROTO_PACKET_NOACK then
@@ -167,15 +167,15 @@ local function receive(buffer)
 end
 
 local function close(buffer)
-  buffer.back:close()
+  buffer.backend:close()
 end
 
 local function settimeout(buffer, v)
-  buffer.back:settimeout(v)
+  buffer.backend:settimeout(v)
 end
 
 local function backend(buffer)
-  return buffer.back:backend()
+  return buffer.backend:backend()
 end
 
 local meta = {
@@ -188,17 +188,17 @@ local meta = {
   }
 }
 
-local function wrap(back)
+local function wrap(backend)
   local buffer = {
     -- HDLC control
-    data   = nil,
-    count  = 0,
-    escape = false,
-    sync   = false,
+    data    = nil,
+    count   = 0,
+    escape  = false,
+    sync    = false,
     -- Received data
-    queue  = {},
+    queue   = {},
     -- Datasource
-    back   = back,
+    backend = backend,
   }
 
   return setmetatable(buffer, meta)

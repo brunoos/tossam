@@ -1,10 +1,10 @@
 local socket = require("socket")
 
-local function read(net, size)
-  return net.conn:receive(size)
+local function receive(net)
+  return net.conn:receive(1)
 end
 
-local function write(net, data)
+local function send(net, data)
   return net.conn:send(data)
 end
 
@@ -22,8 +22,8 @@ end
 
 local meta = {
   __index = {
-    read       = read,
-    write      = write,
+    receive    = receive,
+    send       = send,
     close      = close,
     settimeout = settimeout,
     backend    = backend,
@@ -36,6 +36,7 @@ local function open(host, port)
   if not succ then
     return nil, msg
   end
+  conn:setoption('tcp-nodealy', true)
   conn:settimeout(1000)
   local net = { conn = conn }
   return setmetatable(net, meta)

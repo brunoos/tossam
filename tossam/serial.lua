@@ -23,8 +23,8 @@ local mote2baud = {
   ucmini     = rs232.RS232_BAUD_115200,
 }
 
-local function read(srl, size)
-  local err, data = srl.port:read(size, srl.timeout)
+local function receive(srl)
+  local err, data = srl.port:read(1, srl.timeout)
   if err == rs232.RS232_ERR_NOERROR then
     return data
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -33,7 +33,7 @@ local function read(srl, size)
   return nil, rs232.error_tostring(err)
 end
 
-local function write(srl, data)
+local function send(srl, data)
   local err = srl.port:write(data, srl.timeout)
   if err == rs232.RS232_ERR_NOERROR then
     return true
@@ -57,8 +57,8 @@ end
 
 local meta = {
   __index = {
-    read       = read,
-    write      = write,
+    receive    = receive,
+    send       = send,
     close      = close,
     settimeout = settimeout,
     backend    = backend,
