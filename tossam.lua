@@ -125,27 +125,27 @@ meta.__index = {
 }
 
 local function connect(conf)
-  local backend, msg
+  local back, msg
   if conf.protocol == "serial" then
-    backend, msg = serial.open(conf.port, conf.baud)
+    back, msg = serial.open(conf.port, conf.baud)
   elseif conf.protocol == "sf" then
-    backend, msg = sf.open(conf.host, conf.port)
+    back, msg = sf.open(conf.host, conf.port)
   elseif conf.protocol == "network" then
-    backend, msg = net.open(conf.host, conf.port)
+    back, msg = net.open(conf.host, conf.port)
   elseif conf.protocol == "external" then
-    backend = conf.backend
+    back = conf.backend
   else
     return nil, "invalid protocol"
   end
-  if not backend then
+  if not back then
     return nil, msg
   end
   local conn = {}
   if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
-    backend = hdlc.wrap(backend)
+    back = hdlc.wrap(back)
   end
   conn.defs = {}
-  conn.back = backend
+  conn.back = back
   conn.dst  = conf.nodeid
   return setmetatable(conn, meta)
 end
