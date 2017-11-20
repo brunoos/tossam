@@ -3,10 +3,11 @@
 -- author: Bruno Silvestre
 -- e-mail: brunoos@inf.ufg.br
 --
+-- Based on TinyOS code
+--
 
 local string = require("string")
 local table  = require("table")
-local io     = require("io")
 local bit    = require("bit")
 
 local band   = bit.band
@@ -16,37 +17,32 @@ local rshift = bit.rshift
 local lshift = bit.lshift
 
 --------------------------------------------------------------------------------
+--- DEBUG
+--[[
+local io = require("io")
+local function printf(str, ...)
+  print(string.format(str, ...))
+end
+
+local function printb(buffer)
+  for k, v in ipairs(buffer) do
+    io.stdout:write(string.format("%X ", v))
+  end
+  io.stdout:write("\n")
+end
+--]]
+--------------------------------------------------------------------------------
 
 -- HDLC flags
 local HDLC_SYNC   = 0x7E
 local HDLC_ESCAPE = 0x7D
 local HDLC_MAGIC  = 0x20
 
--- Framer-level message type
-local SERIAL_PROTO_ACK            = 67
-local SERIAL_PROTO_PACKET_ACK     = 68
-local SERIAL_PROTO_PACKET_NOACK   = 69
-local SERIAL_PROTO_PACKET_UNKNOWN = 255
+local MTU = 255
 
-local seqno = 42
-local MTU   = 255
-
---- DEBUG
-local function printf(str, ...)
-  print(string.format(str, ...))
-end
-
-local function printb(data)
-  for k, v in ipairs(data) do
-    io.stdout:write(string.format("%X ", v))
-  end
-  io.stdout:write("\n")
-end
----
-
-local function checksum(data)
+local function checksum(buffer)
   local crc = 0
-  for k, v in ipairs(data) do
+  for k, v in ipairs(buffer) do
     crc = band(bxor(crc, lshift(v, 8)), 0xFFFF)
     for i = 1, 8 do
       if band(crc, 0x8000) == 0 then
@@ -59,123 +55,80 @@ local function checksum(data)
   return crc
 end
 
-local function lowrecv(back, buffer)
+local function receive(hdlc)
   while true do
-    local data, err = back:receive()
+    local data, err = hdlc.back:receive()
     if data then
       data = string.byte(data)
-      if buffer.sync then
-        if buffer.count >= MTU or (buffer.escape and data == HDLC_SYNC) then
-          buffer.sync = false
-        elseif buffer.escape then
-          buffer.escape = false
+      if hdlc.sync then
+        local count = #hdlc.buffer
+        if count >= MTU or (hdlc.escape and data == HDLC_SYNC) then
+          hdlc.sync = false
+        elseif hdlc.escape then
+          hdlc.escape = false
           data = bxor(data, HDLC_MAGIC)
-          buffer.count = buffer.count + 1
-          buffer.data[buffer.count] = data
+          table.insert(hdlc.buffer, data)
         elseif data == HDLC_ESCAPE then
-          buffer.escape = true
+          hdlc.escape = true
         elseif data == HDLC_SYNC then
-          local odata = buffer.data
-          local count = buffer.count
-          buffer.data = {}
-          buffer.count  = 0
+          local buffer = hdlc.buffer
+          hdlc.buffer = {}
           if count > 2 then
-            local b1 = table.remove(odata, count)
-            local b2 = table.remove(odata, count-1)
+            local b1 = table.remove(buffer, count)
+            local b2 = table.remove(buffer, count-1)
             local crc = bor(lshift(b1, 8), b2)
-            if crc == checksum(odata) then
-              local kind = table.remove(odata, 1)
-              return odata, kind
+            if crc == checksum(buffer) then
+              return buffer
             end
           end
         else
-          buffer.count = buffer.count + 1
-          buffer.data[buffer.count] = data
+          table.insert(hdlc.buffer, data)
         end
       elseif data == HDLC_SYNC then
-        buffer.sync   = true
-        buffer.escape = false
-        buffer.data   = {}
-        buffer.count  = 0
+        hdlc.sync   = true
+        hdlc.escape = false
+        hdlc.buffer = {}
       end
     elseif err == "timeout" then
       return nil, "timeout"
     else
-      buffer.sync   = false
-      buffer.escape = false
+      hdlc.sync   = false
+      hdlc.escape = false
       return nil, err
     end
   end
 end
 
-local function lowsend(back, str)
+local function send(hdlc, str)
   local data = { string.byte(str, 1, #str) }
+  local crc  = checksum(data)
+  table.insert(data, band(crc, 0xFF))
+  table.insert(data, band(rshift(crc, 8), 0xFF))
 
-  table.insert(data, 1, SERIAL_PROTO_PACKET_ACK)
-  table.insert(data, 2, seqno)
-  seqno = ((seqno + 1) % 255)
-
-  local crc = checksum(data) 
-  data[#data+1] = band(crc, 0xFF)
-  data[#data+1] = band(rshift(crc, 8), 0xFF)
-
-  local pack = {HDLC_SYNC}
+  local pck = {HDLC_SYNC}
   for k, v in ipairs(data) do
     if v == HDLC_SYNC or v == HDLC_ESCAPE then
-      pack[#pack+1] = HDLC_ESCAPE
-      pack[#pack+1] = band(bxor(v, HDLC_MAGIC), 0xFF)
+      table.insert(pck, HDLC_ESCAPE)
+      table.insert(pck, band(bxor(v, HDLC_MAGIC), 0xFF))
     else
-      pack[#pack+1] = v
+      table.insert(pck, v)
     end
   end
-  pack[#pack+1] = HDLC_SYNC
-  str = string.char(unpack(pack))
-  return back:send(str)
+  table.insert(pck, HDLC_SYNC)
+  str = string.char(unpack(pck))
+  return hdlc.back:send(str)
 end
 
-local function send(buffer, str)
-  local succ, errmsg = lowsend(buffer.back, str)
-  if succ then
-    local pack, kind = lowrecv(buffer.back, buffer)
-    if kind == SERIAL_PROTO_ACK then
-      return true, true
-    elseif kind == SERIAL_PROTO_PACKET_NOACK then
-      buffer.queue[#buffer.queue+1] = pack
-    end
-    return true, false
-  end
-  return false, errmsg
+local function close(hdlc)
+  hdlc.back:close()
 end
 
-local function receive(buffer)
-  if next(buffer.queue) then
-    local data = table.remove(buffer.queue, 1)
-    return string.char(unpack(data))
-  end
-  while true do
-    local data, kind = lowrecv(buffer.back, buffer)
-    if not data then
-      return nil, kind
-    elseif kind == SERIAL_PROTO_PACKET_NOACK then
-      return string.char(unpack(data))
-    elseif kind == SERIAL_PROTO_PACKET_ACK then
-      -- Remove 'seqno' field
-      table.remove(data, 1)
-      return string.char(unpack(data))
-    end
-  end
+local function settimeout(hdlc, v)
+  hdlc.back:settimeout(v)
 end
 
-local function close(buffer)
-  buffer.back:close()
-end
-
-local function settimeout(buffer, v)
-  buffer.back:settimeout(v)
-end
-
-local function backend(buffer)
-  return buffer.back:backend()
+local function backend(hdlc)
+  return hdlc.back:backend()
 end
 
 local meta = {
@@ -188,20 +141,14 @@ local meta = {
   }
 }
 
-local function wrap(backend)
-  local buffer = {
-    -- HDLC control
-    data   = nil,
-    count  = 0,
+local function wrap(back)
+  local hdlc = {
+    queue  = nil,
     escape = false,
     sync   = false,
-    -- Received data
-    queue  = {},
-    -- Datasource
-    back   = backend,
+    back   = back
   }
-
-  return setmetatable(buffer, meta)
+  return setmetatable(hdlc, meta)
 end
 
 --------------------------------------------------------------------------------

@@ -6,6 +6,7 @@
 
 local codec  = require("tossam.codec")
 local hdlc   = require("tossam.hdlc")
+local am     = require("tossam.am")
 local serial = require("tossam.serial")
 local sf     = require("tossam.sf")
 local net    = require("tossam.network")
@@ -125,28 +126,29 @@ meta.__index = {
 }
 
 local function connect(conf)
-  local back, msg
+  local back, err
   if conf.protocol == "serial" then
-    back, msg = serial.open(conf.port, conf.baud)
+    back, err = serial.open(conf.port, conf.baud)
   elseif conf.protocol == "sf" then
-    back, msg = sf.open(conf.host, conf.port)
+    back, err = sf.open(conf.host, conf.port)
   elseif conf.protocol == "network" then
-    back, msg = net.open(conf.host, conf.port)
+    back, err = net.open(conf.host, conf.port)
   elseif conf.protocol == "external" then
     back = conf.backend
   else
     return nil, "invalid protocol"
   end
   if not back then
-    return nil, msg
+    return nil, err
   end
-  local conn = {}
-  if conf.protocol == "serial" or conf.protocol == "network" or conf.hdlc then
-    back = hdlc.wrap(back)
+  if conf.protocol == "serial" or conf.protocol == "network" or conf.am then
+    back = am.wrap(hdlc.wrap(back))
   end
-  conn.defs = {}
-  conn.back = back
-  conn.dst  = conf.nodeid
+  local conn = {
+    defs = {},
+    back = back,
+    dst  = conf.nodeid
+  }
   return setmetatable(conn, meta)
 end
 
