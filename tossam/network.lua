@@ -37,7 +37,6 @@ local function open(host, port)
     return nil, msg
   end
   conn:setoption('tcp-nodealy', true)
-  conn:settimeout(1000)
   local net = { conn = conn }
   return setmetatable(net, meta)
 end

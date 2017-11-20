@@ -24,7 +24,12 @@ local mote2baud = {
 }
 
 local function receive(srl)
-  local err, data = srl.port:read(1, srl.timeout)
+  local err, data
+  if srl.timeout then
+    err, data = srl.port:read(1, srl.timeout)
+  else
+    err, data = srl.port:read(1)
+  end
   if err == rs232.RS232_ERR_NOERROR then
     return data
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -34,7 +39,12 @@ local function receive(srl)
 end
 
 local function send(srl, data)
-  local err = srl.port:write(data, srl.timeout)
+  local err
+  if srl.timeout then
+    err = srl.port:write(data, srl.timeout)
+  else
+    err = srl.port:write(data)
+  end
   if err == rs232.RS232_ERR_NOERROR then
     return true
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -48,7 +58,7 @@ local function close(srl)
 end
 
 local function settimeout(srl, v)
-  self.timeout = v
+  self.timeout = (v >= 0) and v or nil
 end
 
 local function backend(srl)
@@ -95,7 +105,7 @@ local function open(portname, baud)
      return nil, "Serial port setup error"
   end
 
-  local srl = { port = port, timeout = 1000 }
+  local srl = { port = port }
 
   return setmetatable(srl, meta)
 end

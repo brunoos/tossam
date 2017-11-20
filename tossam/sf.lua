@@ -70,7 +70,6 @@ local function open(host, port)
   -- Send our version
   conn:send("U ")
 
-  conn:settimeout(1000)
   local sf = { conn = conn }
 
   return setmetatable(sf, meta)
