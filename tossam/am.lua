@@ -32,8 +32,9 @@ local function receive(am)
       -- remove 'seqno'
       table.remove(pck, 1)
       return string.char(unpack(pck))
+    else
+      return nil, "unknown AM package"
     end
-    return nil, "unknown AM package"
   end
 end
 
