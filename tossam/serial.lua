@@ -23,13 +23,10 @@ local mote2baud = {
   ucmini     = rs232.RS232_BAUD_115200,
 }
 
+local UINT32_MAX = 4294967295
+
 local function receive(srl)
-  local err, data
-  if srl.timeout then
-    err, data = srl.port:read(1, srl.timeout)
-  else
-    err, data = srl.port:read(1)
-  end
+  local err, data = srl.port:read(1, srl.timeout)
   if err == rs232.RS232_ERR_NOERROR then
     return data
   elseif err == rs232.RS232_ERR_TIMEOUT then
@@ -58,7 +55,7 @@ local function close(srl)
 end
 
 local function settimeout(srl, v)
-  self.timeout = (v >= 0) and v or nil
+  srl.timeout = (v >= 0) and v or UINT32_MAX
 end
 
 local function backend(srl)
@@ -105,7 +102,10 @@ local function open(portname, baud)
      return nil, "Serial port setup error"
   end
 
-  local srl = { port = port }
+  local srl = {
+    port    = port,
+    timeout = UINT32_MAX,
+  }
 
   return setmetatable(srl, meta)
 end
