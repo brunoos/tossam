@@ -36,7 +36,7 @@ local function open(host, port)
   if not succ then
     return nil, msg
   end
-  conn:setoption('tcp-nodealy', true)
+  conn:setoption('tcp-nodelay', true)
   local net = { conn = conn }
   return setmetatable(net, meta)
 end
