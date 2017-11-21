@@ -95,7 +95,7 @@ local function send(conn, payload, def)
    payload = codec.encode(def, payload)
    local head = {
       am   = 0,
-      dst  = conn.dst,
+      dst  = 0,
       src  = 0,
       len  = #payload,
       grp  = 0,
@@ -147,7 +147,6 @@ local function connect(conf)
   local conn = {
     defs = {},
     back = back,
-    dst  = conf.nodeid
   }
   return setmetatable(conn, meta)
 end
