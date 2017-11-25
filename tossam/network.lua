@@ -1,47 +1,25 @@
 local socket = require("socket")
 
---------------------------------------------------------------------------------
-
-local function lowsend(net, data)
-  local i = 1
-  while true do
-    local succ, msg, last = net.conn:send(data, i)
-    if succ then
-      return true
-    elseif msg ~= "timeout" then
-      return false, msg
-    else
-      if last >= i then
-        i = last + 1
-      end
-      coroutine.yield(false, "timeout")
-    end
-  end
-end
-
---------------------------------------------------------------------------------
-
 local function send(net, data)
-  if not data and not net.current then
+  if data then
+    net.index = 1
+    net.data  = data
+  elseif not net.data then
     return false, "invalid state"
-  elseif data then
-    net.current = coroutine.create(lowsend)
   end
 
-  local status, err, msg = coroutine.resume(net.current, net, data)
-
-  if not status then
-    net.current = nil
-    return false, err
-  elseif err then
-    net.current = nil
+  local succ, err, last = net.conn:send(net.data, net.index)
+  if succ then
+    net.index = nil
+    net.data  = nil
     return true
-  elseif msg ~= "timeout" then
-    net.current = nil
-    return false, msg
+  elseif err == "timeout" then
+    net.index = last + 1
+    return false, err
   end
-
-  return false, "timeout"
+  net.index = nil
+  net.data  = nil
+  return false, err
 end
 
 local function receive(net)
